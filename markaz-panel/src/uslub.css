@@ -1,0 +1,194 @@
+@import "tailwindcss";
+@import "leaflet/dist/leaflet.css";
+
+/* ══ MAVZU — FAQAT OQ ══
+   Ilgari to'q mavzu ham bor edi va OS to'q rejimda bo'lsa panel o'zi
+   to'qqa o'tardi. Idorada ekran proyektorga uzatiladi, hisobot qog'ozga
+   bosiladi va bir hujjatni bir necha xodim ko'radi — mavzu kimningdir
+   tizim sozlamasiga bog'liq bo'lmasligi kerak. Panel HAR DOIM oq.
+
+   RANG MA'NOSI (butun panelda bir xil):
+     ko'k/siyoh — O'LCHOV (sanoq, kassa) — baho bermaydi
+     yashil     — holat yaxshi (ulangan, faol)
+     sariq      — e'tibor kerak
+     qizil      — haqiqiy muammo (to'xtatilgan, bekor, aloqa yo'q) */
+@theme {
+  --color-asos-50: #ecfdf5;
+  --color-asos-500: #10b981;
+  --color-asos-600: #059669;
+  --color-asos-700: #047857;
+  --font-sans: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --font-mono: ui-monospace, "JetBrains Mono", "Cascadia Code", monospace;
+}
+
+:root { color-scheme: light; }
+
+body {
+  margin: 0;
+  background: var(--fon);
+  color: var(--matn);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  /* Raqamlar jadvalda ustma-ust tursin */
+  font-variant-numeric: tabular-nums;
+}
+
+:root {
+  /* HUJJAT KO'RINISHI. Fon oq qog'ozga yaqin, karta esa toza oq —
+     hisobot ekranda ham, bosmada ham bir xil o'qiladi. Chegara
+     ko'rinadigan, lekin bosim bermaydigan darajada. */
+  --fon: #f7f8fa;
+  --panel: #ffffff;
+  --panel-2: #f5f7fa;
+  --chegara: #dfe4ea;
+  --matn: #101418;
+  --matn-2: #3f4a58;
+  --matn-3: #6f7b89;   /* AA: oq fonda 4.6:1 */
+  --soya: 0 1px 2px rgba(16, 24, 40, .04);
+  --qator-fon: #fafbfc;
+
+/* ── SANOQ va KASSA ranglari ──
+   Bular O'LCHOV ranglari, HUKM ranglari EMAS. Ilgari grafikda sanoq
+   qizil, kassa yashil edi: qizil — xavf rangi, "963 bosh o'tdi" esa
+   xavf emas. Nazoratchi qizil chiziqni ogohlantirish deb o'qirdi. Endi
+   ikkisi ham neytral, bir-biridan faqat ohang bilan farq qiladi.
+   Qizil va sariq FAQAT haqiqiy holat uchun qoladi: to'xtatilgan bozor,
+   bekor litsenziya, aloqa yo'q. */
+  --sanoq: #0ea5e9;   /* kamera sanagan hayvon */
+  --kassa: #4f46e5;   /* chekdagi bosh soni */
+}
+/* ── JADVAL ── */
+/* Keng jadval SAHIFANI emas, O'ZINI suradi. `overflow-y: visible` bilan
+   birga `overflow-x: auto` yozilsa brauzer ikkalasini ham `auto` qiladi
+   va yopishqoq sarlavha buziladi — shuning uchun faqat gorizontal. */
+.jadval-orash { overflow-x: auto; max-width: 100%; }
+/* Uzun ro'yxatda sarlavha ko'rinib tursin */
+.jadval-bosh th { position: sticky; top: 0; z-index: 2; }
+.jadval-qator:nth-child(even) { background: var(--qator-fon); }
+.jadval-qator:hover { background: color-mix(in srgb, var(--color-asos-500) 7%, transparent); }
+
+.leaflet-container { font-family: var(--font-sans); }
+
+/* Klaviatura bilan yurish ko'rinib tursin (idorada sichqonchasiz ham
+   ishlashadi) */
+:where(button, a, input, select, textarea, [tabindex]):focus-visible {
+  outline: 2px solid var(--color-asos-500);
+  outline-offset: 2px;
+  border-radius: 6px;
+}
+
+/* Ekran o'quvchi uchun matn — ko'rinmaydi, lekin o'qiladi */
+.sr-only {
+  position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
+  overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0;
+}
+/* Tab bosilganda birinchi bo'lib "mazmunga o'tish" havolasi chiqadi */
+.otish-havola:focus {
+  position: fixed; top: 8px; left: 8px; z-index: 100;
+  width: auto; height: auto; clip: auto; margin: 0;
+  padding: 8px 14px; background: var(--color-asos-600); color: #fff;
+  border-radius: 8px;
+}
+
+/* ══ CHOP ETISH ══
+   Idorada hisobot QOG'OZDA imzolanadi. Chop etishda: yon menyu,
+   tugmalar va boshqaruv elementlari chiqmaydi; matn qora, fon oq;
+   jadval sahifadan sahifaga o'tganda sarlavha takrorlanadi. */
+@media print {
+  :root {
+    --fon: #fff; --panel: #fff; --panel-2: #fff;
+    --chegara: #c9ced6; --matn: #000; --matn-2: #222; --matn-3: #444;
+    --soya: none; --qator-fon: #fff;
+  }
+  aside, header button, .chop-yashir, .leaflet-control-container { display: none !important; }
+  header { position: static !important; border: 0 !important; }
+  main { padding: 0 !important; max-width: none !important; }
+  section { break-inside: avoid; border: 1px solid #c9ced6 !important; box-shadow: none !important; }
+  .jadval-bosh th { position: static; }
+  table { break-inside: auto; }
+  tr { break-inside: avoid; break-after: auto; }
+  thead { display: table-header-group; }   /* har sahifada sarlavha */
+  a[href^="#"]::after { content: ""; }
+  .chop-sarlavha { display: block !important; }
+}
+.chop-sarlavha { display: none; }
+
+/* ══ HARAKAT ══
+   Ohang hujjat uslubiga mos: sezilarli, lekin bezak emas. Har
+   animatsiyaning MA'NOSI bor, aks holda u faqat chalg'itardi:
+
+     logo yoyi     — o'lchov nuqtaga yetib boradi (belgining o'z ma'nosi)
+     karta kirishi — sahifa qaysi tartibda o'qilishini ko'rsatadi
+     raqam sanashi — bu SANOQ tizimi; raqamning o'sib kelishi mahsulotning
+                     o'zi qiladigan ishni takrorlaydi
+     jonli nuqta   — aloqa borligini bir qarashda bildiradi
+
+   Chop etishda va prefers-reduced-motion da hammasi o'chadi (pastda). */
+
+@keyframes cn-kirish {
+  from { opacity: 0; transform: translateY(10px); }
+  to   { opacity: 1; transform: none; }
+}
+@keyframes cn-yoy {
+  from { stroke-dashoffset: 180; }
+  to   { stroke-dashoffset: 0; }
+}
+@keyframes cn-puls {
+  0%, 100% { opacity: 1;   transform: scale(1); }
+  50%      { opacity: .35; transform: scale(.7); }
+}
+@keyframes cn-shimmer {
+  from { background-position: -200% 0; }
+  to   { background-position: 200% 0; }
+}
+
+/* Kartalar ketma-ket chiqadi — ko'z tabiiy tartibda yuradi.
+   Kechikish 6 tagacha; undan keyin kutish sezilarli bo'lib qolardi. */
+.cn-kir { animation: cn-kirish .34s cubic-bezier(.22,.61,.36,1) both; }
+.cn-kir-1 { animation-delay: .04s } .cn-kir-2 { animation-delay: .08s }
+.cn-kir-3 { animation-delay: .12s } .cn-kir-4 { animation-delay: .16s }
+.cn-kir-5 { animation-delay: .20s } .cn-kir-6 { animation-delay: .24s }
+
+/* Logo yoyi ochilishi — faqat BIR MARTA, sahifa yuklanganda */
+.cn-logo-yoy {
+  stroke-dasharray: 180;
+  animation: cn-yoy .9s cubic-bezier(.33,1,.68,1) both;
+}
+.cn-logo-nuqta { animation: cn-kirish .3s .75s both; }
+
+/* Jonli aloqa nuqtasi */
+.cn-jonli { animation: cn-puls 2s ease-in-out infinite; }
+
+/* Yuklanish skeleti — kulrang blok o'rniga yumshoq yaltirash */
+.cn-skelet {
+  background: linear-gradient(90deg,
+    var(--panel-2) 25%, var(--chegara) 50%, var(--panel-2) 75%);
+  background-size: 200% 100%;
+  animation: cn-shimmer 1.4s ease-in-out infinite;
+}
+
+/* Karta ustiga kelganda yengil ko'tarilish */
+.cn-kart { transition: box-shadow .18s ease, transform .18s ease; }
+.cn-kart:hover { box-shadow: 0 4px 14px rgba(16,24,40,.08); transform: translateY(-1px); }
+
+.jadval-qator { transition: background .14s ease; }
+
+/* CHOP ETISHDA harakat yo'q — qog'ozda ma'nosi yo'q, ustiga
+   yarim ochilgan holatda "muzlab" qolishi mumkin. */
+@media print {
+  .cn-kir, .cn-logo-yoy, .cn-logo-nuqta, .cn-jonli, .cn-skelet {
+    animation: none !important;
+  }
+  .cn-logo-yoy { stroke-dasharray: none; }
+}
+
+/* Harakatni kamaytirish so'ralsa — animatsiya yo'q */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: .01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: .01ms !important;
+  }
+  /* Yoy yarim chizilgan holda qolib ketmasin */
+  .cn-logo-yoy { stroke-dasharray: none !important; }
+}

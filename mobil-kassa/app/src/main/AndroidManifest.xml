@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <!-- Kompyuter bilan bitta WiFi da gaplashish -->
+    <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+    <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
+
+    <!-- Bluetooth chek printer (XP-P201A) — Classic SPP.
+         Android 12+ da BLUETOOTH_CONNECT so'raladi; eskilarida esa
+         BLUETOOTH/BLUETOOTH_ADMIN yetarli. -->
+    <uses-permission android:name="android.permission.BLUETOOTH"
+        android:maxSdkVersion="30" />
+    <uses-permission android:name="android.permission.BLUETOOTH_ADMIN"
+        android:maxSdkVersion="30" />
+    <uses-permission android:name="android.permission.BLUETOOTH_CONNECT" />
+    <!-- BLUETOOTH_SCAN: Android 12+ da cancelDiscovery() ham shu ruxsatni
+         talab qiladi (juftlangan printerga ulanishda chaqiriladi).
+         neverForLocation — joylashuv so'ralmasin, bizga u kerak emas. -->
+    <uses-permission android:name="android.permission.BLUETOOTH_SCAN"
+        android:usesPermissionFlags="neverForLocation" />
+
+    <uses-feature android:name="android.hardware.bluetooth"
+        android:required="false" />
+
+    <application
+        android:allowBackup="true"
+        android:icon="@drawable/ic_launcher"
+        android:label="Chorva Kassa"
+        android:supportsRtl="false"
+        android:theme="@style/Theme.AppCompat.NoActionBar"
+        android:usesCleartextTraffic="true">
+        <!-- usesCleartextTraffic: lokal tarmoqdagi http://192.168.x.x:8090
+             uchun shart (HTTPS yo'q, tashqi tarmoqqa chiqmaydi). -->
+
+        <activity
+            android:name=".MainActivity"
+            android:exported="true"
+            android:screenOrientation="portrait"
+            android:windowSoftInputMode="adjustResize">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+    </application>
+</manifest>

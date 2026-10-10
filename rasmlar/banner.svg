@@ -1,0 +1,84 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="360" viewBox="0 0 1280 360" role="img" aria-label="CHORVA NAZORAT — mol bozori uchun markaziy nazorat paneli">
+  <defs>
+    <linearGradient id="fon" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#08151a"/>
+      <stop offset="1" stop-color="#0f2429"/>
+    </linearGradient>
+    <linearGradient id="nur" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#2dd4bf" stop-opacity="0"/>
+      <stop offset=".5" stop-color="#2dd4bf" stop-opacity=".9"/>
+      <stop offset="1" stop-color="#2dd4bf" stop-opacity="0"/>
+    </linearGradient>
+    <pattern id="tor" width="32" height="32" patternUnits="userSpaceOnUse">
+      <path d="M32 0H0V32" fill="none" stroke="#16313a" stroke-width="1"/>
+    </pattern>
+    <symbol id="qoy" viewBox="0 0 60 40">
+      <ellipse cx="28" cy="20" rx="20" ry="13" fill="#e8efe9"/>
+      <circle cx="16" cy="13" r="7" fill="#e8efe9"/><circle cx="26" cy="9" r="7" fill="#e8efe9"/><circle cx="37" cy="11" r="7" fill="#e8efe9"/>
+      <ellipse cx="50" cy="17" rx="7" ry="6" fill="#3a4a4f"/>
+      <rect x="16" y="29" width="4" height="10" rx="2" fill="#3a4a4f"/><rect x="34" y="29" width="4" height="10" rx="2" fill="#3a4a4f"/>
+    </symbol>
+    <style>
+      .sarlavha{font:800 54px 'Segoe UI',Inter,Roboto,Helvetica,Arial,sans-serif;fill:#f2f7f5;letter-spacing:1px}
+      .izoh{font:500 22px 'Segoe UI',Inter,Roboto,Helvetica,Arial,sans-serif;fill:#8fc7bb}
+      .teg{font:600 15px 'Segoe UI',Inter,Roboto,Helvetica,Arial,sans-serif;fill:#d2e6e1}
+      .kichik{font:700 13px 'Segoe UI',Inter,Roboto,Helvetica,Arial,sans-serif;fill:#8fc7bb;letter-spacing:1.5px}
+      .raqam{font:800 34px 'Segoe UI',Inter,Roboto,Helvetica,Arial,sans-serif;fill:#f2f7f5}
+    </style>
+  </defs>
+  <rect width="1280" height="360" fill="url(#fon)"/>
+  <rect width="1280" height="360" fill="url(#tor)" opacity=".5"/>
+
+  <g transform="translate(64 0)">
+    <g transform="translate(28 98)">
+      <circle r="24" fill="none" stroke="#134e4a" stroke-width="7"/>
+      <circle r="24" fill="none" stroke="#2dd4bf" stroke-width="7" stroke-linecap="round" stroke-dasharray="120 151" transform="rotate(-90)">
+        <animateTransform attributeName="transform" type="rotate" values="-90;270" dur="6s" repeatCount="indefinite"/>
+      </circle>
+    </g>
+    <text class="sarlavha" x="0" y="190">CHORVA NAZORAT</text>
+    <text class="izoh" x="0" y="232">Mol bozori · kamera sanog'i · kassa · markaziy nazorat paneli</text>
+    <g transform="translate(0 270)">
+      <rect width="90" height="30" rx="15" fill="#15363a"/><text class="teg" x="45" y="20" text-anchor="middle">Node.js</text>
+      <rect x="100" width="84" height="30" rx="15" fill="#15363a"/><text class="teg" x="142" y="20" text-anchor="middle">Fastify</text>
+      <rect x="194" width="74" height="30" rx="15" fill="#15363a"/><text class="teg" x="231" y="20" text-anchor="middle">React</text>
+      <rect x="278" width="84" height="30" rx="15" fill="#15363a"/><text class="teg" x="320" y="20" text-anchor="middle">SQLite</text>
+      <rect x="372" width="88" height="30" rx="15" fill="#15363a"/><text class="teg" x="416" y="20" text-anchor="middle">Kotlin</text>
+      <rect x="470" width="96" height="30" rx="15" fill="#15363a"/><text class="teg" x="518" y="20" text-anchor="middle">Ed25519</text>
+    </g>
+  </g>
+
+  <!-- Yo'lak: qo'ylar sanoq chizig'idan o'tadi, hisoblagich oshadi (SMIL) -->
+  <g transform="translate(730 70)">
+    <rect width="300" height="200" rx="14" fill="#0c1d21" stroke="#1f4a50" stroke-width="2"/>
+    <line x1="150" y1="14" x2="150" y2="186" stroke="#ef4444" stroke-width="3" stroke-dasharray="8 6"/>
+    <rect x="144" y="14" width="12" height="172" fill="url(#nur)" opacity="0">
+      <animate attributeName="opacity" values="0;0;.9;0;0;.9;0;0;.9;0;0" keyTimes="0;0.13;0.142;0.17;0.46;0.475;0.5;0.79;0.808;0.84;1" dur="6s" repeatCount="indefinite"/>
+    </rect>
+    <svg x="0" y="0" width="300" height="200" overflow="hidden">
+      <use href="#qoy" width="60" height="40" y="40">
+        <animate attributeName="x" values="-70;330" dur="6s" repeatCount="indefinite"/>
+      </use>
+      <use href="#qoy" width="60" height="40" y="110">
+        <animate attributeName="x" values="-70;330" dur="6s" begin="-2s" repeatCount="indefinite"/>
+      </use>
+      <use href="#qoy" width="60" height="40" y="70">
+        <animate attributeName="x" values="-70;330" dur="6s" begin="-4s" repeatCount="indefinite"/>
+      </use>
+    </svg>
+  </g>
+
+  <g transform="translate(1056 70)">
+    <rect width="168" height="94" rx="12" fill="#12292d" stroke="#1f4a50" stroke-width="2"/>
+    <text class="kichik" x="16" y="28">SANOQ · CHIQDI</text>
+    <g class="raqam">
+      <text x="16" y="74">128<animate attributeName="opacity" calcMode="discrete" values="1;0" keyTimes="0;0.142" dur="6s" repeatCount="indefinite"/></text>
+      <text x="16" y="74" opacity="0">129<animate attributeName="opacity" calcMode="discrete" values="0;1;0" keyTimes="0;0.142;0.475" dur="6s" repeatCount="indefinite"/></text>
+      <text x="16" y="74" opacity="0">130<animate attributeName="opacity" calcMode="discrete" values="0;1;0" keyTimes="0;0.475;0.808" dur="6s" repeatCount="indefinite"/></text>
+      <text x="16" y="74" opacity="0">131<animate attributeName="opacity" calcMode="discrete" values="0;1" keyTimes="0;0.808" dur="6s" repeatCount="indefinite"/></text>
+    </g>
+    <rect y="106" width="168" height="94" rx="12" fill="#12292d" stroke="#1f4a50" stroke-width="2"/>
+    <text class="kichik" x="16" y="134">CHEK · BOSH</text>
+    <text class="raqam" x="16" y="180">135</text>
+  </g>
+</svg>

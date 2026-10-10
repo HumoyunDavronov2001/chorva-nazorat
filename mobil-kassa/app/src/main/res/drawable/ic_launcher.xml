@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Ilova belgisi: CHORVA NAZORAT logosi — to'q yashil yumaloq kvadrat ustida
+     yorqin yashil puls (kardiogramma) chizig'i.
+     Yagona manba: src/desktop/chorva.ico (256x256 dan piksel bo'yicha
+     o'lchangan nisbatlar). Kompyuterdagi ui::Chizma::logo() bilan
+     bitta shakl bo'lishi uchun raqamlar aynan o'sha nisbatlardan
+     olingan — o'zgartirilmasin. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+
+    <!-- Fon — yumaloq kvadrat, butun maydonni egallaydi (0..108).
+         NEGA chetdan bo'sh joy qoldirilmagan: chorva.ico da ham, desktopdagi
+         Chizma::logo() da ham yumaloq kvadrat butun kvadratni to'ldiradi;
+         bu yerda ichkariroq chizilsa belgi manbadan kichikroq chiqib,
+         "hamma yuzada aynan bir xil shakl" qoidasi buzilardi. Bu adaptiv
+         emas (legacy) ikonka — qobiq uni kesmaydi, faqat o'z plastinkasiga
+         kichraytirib joylashtiradi, shuning uchun xavfsiz zona shart emas.
+         Burchak radiusi = 108 * 0.172 = 18.576. -->
+    <path
+        android:fillColor="#062B16"
+        android:pathData="M18.576,0 H89.424 A18.576,18.576 0 0 1 108,18.576
+                          V89.424 A18.576,18.576 0 0 1 89.424,108
+                          H18.576 A18.576,18.576 0 0 1 0,89.424
+                          V18.576 A18.576,18.576 0 0 1 18.576,0 Z" />
+
+    <!-- Puls chizig'i. Bu yerda fill emas, STROKE ishlatilgan: shakl
+         to'ldirilgan figura emas, bir tekis qalinlikdagi chiziq —
+         faqat stroke uchlarni ("round" cap) va burilishlarni
+         ("round" join) yumaloq qila oladi, fill bilan qalinlik
+         burilishlarda o'zgarib ketardi.
+         Qalinlik = 108 * 0.090 = 9.72.
+         Tugunlar = 108 * (nisbat), chapdan o'ngga:
+           0.098/0.520  chapdagi tekis boshi
+           0.273/0.520  ko'tarilish boshlanadi
+           0.395/0.242  baland cho'qqi
+           0.574/0.793  chuqur pastki nuqta
+           0.719/0.400  kichik cho'qqi
+           0.801/0.520  tekislikka qaytadi
+           0.918/0.520  o'ngdagi tekis oxiri
+         Yumaloq uch markazdan yarim qalinlikka (4.86) chiqadi, shunda ham
+         eng chekka nuqtalar 0..108 ichida qoladi (chap 5.72, o'ng 104.00,
+         tepa 21.28, past 90.50) — chiziq fondan chiqib ketmaydi. -->
+    <path
+        android:fillColor="@android:color/transparent"
+        android:strokeColor="#00FF88"
+        android:strokeWidth="9.72"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"
+        android:pathData="M10.584,56.16
+                          L29.484,56.16
+                          L42.66,26.136
+                          L61.992,85.644
+                          L77.652,43.2
+                          L86.508,56.16
+                          L99.144,56.16" />
+</vector>
