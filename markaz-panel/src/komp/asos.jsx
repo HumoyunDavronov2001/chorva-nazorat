@@ -236,6 +236,24 @@ export function Kpi({ nom, qiymat, izoh, holat, belgi, yuklanmoqda,
   );
 }
 
+// NUSXALASH TUGMASI. Ilgari navigator.clipboard.writeText javobsiz
+// chaqirilardi: nusxa olindimi-yo'qmi ko'rinmasdi, brauzer ruxsat
+// bermasa esa xato jimgina yutilardi — litsenziya kaliti kabi muhim
+// matnda bu xavfli. Endi natija tugmaning o'zida 2 soniya ko'rinadi.
+export function NusxaTugma({ matn, children, ...qolgan }) {
+  const [holat, setHolat] = useState('');
+  const bos = async () => {
+    try {
+      await navigator.clipboard.writeText(matn);
+      setHolat('✓ nusxalandi');
+    } catch {
+      setHolat('nusxalanmadi — matnni qoʻlda belgilang');
+    }
+    setTimeout(() => setHolat(''), 2500);
+  };
+  return <Tugma {...qolgan} onClick={bos}>{holat || children}</Tugma>;
+}
+
 export function Teg({ children, holat, rang }) {
   const r = rang || HOLAT_RANG[holat] || 'var(--matn-3)';
   return (
@@ -434,6 +452,14 @@ export function Jadval({ ustunlar, qatorlar, kalit, bosh = 'Maʼlumot yoʻq',
 /* Sana oralig'ini tanlash — bir necha bo'limda bir xil ishlaydi */
 export function OraliqTanlash({ dan, gacha, ozgardi, tezTanlov = true }) {
   const kirit = 'px-2 py-1 rounded-lg border text-sm';
+  // Sana maydoni tozalansa ('') yoki boshlanish tugashdan keyin qo'lda
+  // terilsa (min/max faqat taqvimni cheklaydi, terishni emas) — serverga
+  // buzuq oraliq ketmasin.
+  const tanla = (d, g) => {
+    if (!d || !g) return;
+    if (d > g) [d, g] = [g, d];
+    ozgardi(d, g);
+  };
   const uslub = { borderColor: 'var(--chegara)', background: 'var(--panel-2)',
                   color: 'var(--matn)' };
   const tez = (kun) => {
@@ -445,11 +471,11 @@ export function OraliqTanlash({ dan, gacha, ozgardi, tezTanlov = true }) {
   return (
     <div className="flex flex-wrap items-center gap-2">
       <input type="date" value={dan} max={gacha} aria-label="Boshlanish sanasi"
-             onChange={(e) => ozgardi(e.target.value, gacha)}
+             onChange={(e) => tanla(e.target.value, gacha)}
              className={kirit} style={uslub} />
       <span style={{ color: 'var(--matn-3)' }}>—</span>
       <input type="date" value={gacha} min={dan} aria-label="Tugash sanasi"
-             onChange={(e) => ozgardi(dan, e.target.value)}
+             onChange={(e) => tanla(dan, e.target.value)}
              className={kirit} style={uslub} />
       {tezTanlov && (
         <div className="flex gap-1 chop-yashir">

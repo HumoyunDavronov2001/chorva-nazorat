@@ -5,7 +5,7 @@
 // ularni bir-biridan ayirmaydi va "kutilgan summa" ni taxmin qilmaydi
 // (sabab: hisob.js boshidagi izoh va EXE_PROTOKOL.md, 3-bo'lim).
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { AreaChart, Area, BarChart, Bar, XAxis, YAxis, CartesianGrid,
          Tooltip as ReTooltip, ResponsiveContainer, Legend, PieChart, Pie, Cell }
   from 'recharts';
@@ -38,7 +38,9 @@ export default function Statistika({ xatoUshla }) {
     useSorov(() => api.ol(`/api/statistika?id=${bozorId}&dan=${dan}&gacha=${gacha}`),
              [bozorId, dan, gacha]);
 
-  if (xato) xatoUshla?.(xato);
+  // Sessiya tugaganini (401) App'ga EFFEKTDA aytamiz — render paytida
+  // boshqa komponent holatini o'zgartirish React xatosi.
+  useEffect(() => { if (xato) xatoUshla?.(xato); }, [xato, xatoUshla]);
 
   const tanlanganNom = bozorId
     ? (bozorlar.malumot?.bozorlar || []).find((b) => b.id === bozorId)?.nom
