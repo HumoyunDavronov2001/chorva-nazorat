@@ -23,13 +23,21 @@ export function useSorov(fn, bogliq = [], { interval = 0 } = {}) {
   });
   const fnRef = useRef(fn);
   fnRef.current = fn;
+  // Tartib raqami: sana yoki filtr tez almashtirilsa, ESKI so'rovning kech
+  // kelgan javobi yangisining ustiga yozilmasin. Raqam faqat to'liq
+  // yuklashda oshadi — fon yangilanishlari bir-birini bekor qilmaydi
+  // (aks holda sekin internetda ma'lumot umuman ko'rinmay qolardi).
+  const tartib = useRef(0);
 
   const yukla = useCallback(async (jim = false) => {
+    const men = jim ? tartib.current : ++tartib.current;
     if (!jim) setHolat((h) => ({ ...h, yuklanmoqda: true, xato: null }));
     try {
       const m = await fnRef.current();
+      if (men !== tartib.current) return;
       setHolat({ yuklanmoqda: false, xato: null, malumot: m, oxirgiYangilangan: new Date() });
     } catch (e) {
+      if (men !== tartib.current) return;
       setHolat((h) => ({ ...h, yuklanmoqda: false, xato: e,
                          malumot: jim ? h.malumot : null }));
     }
@@ -38,9 +46,11 @@ export function useSorov(fn, bogliq = [], { interval = 0 } = {}) {
   useEffect(() => {
     yukla();
     if (!interval) return undefined;
-    const t = setInterval(() => yukla(true), interval);
     // Ko'rinmaydigan tab bekorga so'rov yubormasin (server yuki va
-    // noutbukda batareya)
+    // noutbukda batareya). Ilgari bu izoh bor edi-yu, taymer yashirin
+    // tabda ham ishlayverardi; endi yashirin tabda so'rov ketmaydi, tab
+    // qayta ochilganda darhol yangilanadi.
+    const t = setInterval(() => { if (!document.hidden) yukla(true); }, interval);
     const korinish = () => { if (!document.hidden) yukla(true); };
     document.addEventListener('visibilitychange', korinish);
     return () => { clearInterval(t); document.removeEventListener('visibilitychange', korinish); };

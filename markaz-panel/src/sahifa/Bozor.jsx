@@ -136,9 +136,16 @@ function JonliKamera({ id }) {
         if (!toxta) setSuratXato(e.message);
       }
     };
+    // Har so'rov bozordan yangi surat so'raydi (bozorning sekin interneti
+    // orqali). Tab yashirin bo'lsa — so'ramaymiz; qaytganda darhol olamiz.
     ol();
-    const t = setInterval(ol, 2000);
-    return () => { toxta = true; clearInterval(t); };
+    const t = setInterval(() => { if (!document.hidden) ol(); }, 2000);
+    const korinish = () => { if (!document.hidden) ol(); };
+    document.addEventListener('visibilitychange', korinish);
+    return () => {
+      toxta = true; clearInterval(t);
+      document.removeEventListener('visibilitychange', korinish);
+    };
   }, [id, kam]);
 
   const kameralar = texnik.malumot?.holat?.kameralar || [];

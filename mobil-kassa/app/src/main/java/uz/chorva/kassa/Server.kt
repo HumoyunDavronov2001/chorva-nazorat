@@ -1,9 +1,12 @@
 package uz.chorva.kassa
 
 import android.content.Context
+import android.net.ConnectivityManager
+import android.net.NetworkCapabilities
 import org.json.JSONArray
 import org.json.JSONObject
 import java.net.HttpURLConnection
+import java.net.Inet4Address
 import java.net.InetAddress
 import java.net.URL
 import java.util.concurrent.Executors
@@ -26,6 +29,13 @@ object Server {
 
     @Volatile var manzil: String = ""      // "http://192.168.1.5:8090"
     @Volatile var token: String = ""
+
+    /**
+     * Kompyuter telefonni uzganda (401) chaqiriladi — FON ipidan.
+     * MainActivity bu yerda tokenni xotiraga ham yozadi va ekranni
+     * "ulanish" holatiga qaytaradi.
+     */
+    @Volatile var uzilganda: (() -> Unit)? = null
 
     fun yukla(c: Context) {
         val p = c.getSharedPreferences("chorva", Context.MODE_PRIVATE)
@@ -78,17 +88,43 @@ object Server {
         ok
     } catch (_: Exception) { false }
 
-    /** Telefonning shu WiFi dagi IP manzili. */
-    fun ozIp(): String? {
+    /**
+     * Telefonning shu WiFi dagi IP manzili.
+     *
+     * Avval Android'dan aynan WiFi (yoki kabel) tarmog'ini so'raymiz.
+     * Ilgari birinchi uchragan IPv4 olinardi — mobil internet ham yoqiq
+     * bo'lsa bu ko'pincha operator manzili (rmnet) bo'lib chiqardi va
+     * qidiruv butunlay boshqa tarmoqni skanerlab, kompyuterni topmasdi.
+     */
+    fun ozIp(c: Context): String? {
+        try {
+            val cm = c.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
+            @Suppress("DEPRECATION")
+            for (n in cm.allNetworks) {
+                val cap = cm.getNetworkCapabilities(n) ?: continue
+                if (!cap.hasTransport(NetworkCapabilities.TRANSPORT_WIFI) &&
+                    !cap.hasTransport(NetworkCapabilities.TRANSPORT_ETHERNET)) continue
+                val lp = cm.getLinkProperties(n) ?: continue
+                for (la in lp.linkAddresses) {
+                    val a = la.address
+                    if (a is Inet4Address && !a.isLoopbackAddress) return a.hostAddress
+                }
+            }
+        } catch (_: Exception) {}
+
+        // Zaxira (masalan telefonning o'zi hotspot bo'lsa): interfeyslar
+        // ro'yxatidan, mobil internet va VPN interfeyslarini o'tkazib.
+        val mobil = listOf("rmnet", "ccmni", "pdp", "ppp", "tun", "clat", "v4-", "dummy")
         try {
             val ifs = java.net.NetworkInterface.getNetworkInterfaces()
             while (ifs.hasMoreElements()) {
                 val nif = ifs.nextElement()
                 if (!nif.isUp || nif.isLoopback) continue
+                if (mobil.any { nif.name.startsWith(it) }) continue
                 val addrs = nif.inetAddresses
                 while (addrs.hasMoreElements()) {
                     val a: InetAddress = addrs.nextElement()
-                    if (!a.isLoopbackAddress && a is java.net.Inet4Address)
+                    if (!a.isLoopbackAddress && a is Inet4Address && a.isSiteLocalAddress)
                         return a.hostAddress
                 }
             }
@@ -120,7 +156,11 @@ object Server {
         // Endi token darhol tashlanadi: ekran "qayta ulaning" holatiga
         // qaytadi va kassir 5 xonali kodni yangidan kiritadi.
         if (kod == 401) {
+            val ulangan = token.isNotEmpty()
             token = ""
+            // Faqat ULANGAN telefon uzilganda ekranni almashtiramiz; ulanish
+            // paytidagi noto'g'ri kod esa shunchaki xabar bo'lib chiqadi.
+            if (ulangan) uzilganda?.invoke()
             throw Exception("ulanish uzilgan — kompyuterdan yangi kod oling")
         }
         if (kod !in 200..299) throw Exception("server xatosi ($kod)")
@@ -180,9 +220,6 @@ object Server {
      * "escpos" — server tayyorlagan baytlar (base64). Bo'lsa AYNAN shular
      * printerga uzatiladi (kompyuterdagi chek bilan bir xil bo'ladi);
      * bo'lmasa ilova chekni o'zi yig'adi (Chek.kt).
-     */
-    /**
-     * Chek chiqarish.
      *
      * NONCE nima uchun: WiFi uzilib qolsa yoki javob kechiksa, so'rov
      * qayta yuborilishi mumkin. Nonce'siz server buni IKKINCHI savdo deb
@@ -190,9 +227,9 @@ object Server {
      * ortiqcha soliq to'lardi. Nonce bilan server takrorni tanib oladi
      * va O'SHA chekni qaytaradi.
      *
-     * Nonce har CHAQIRIQDA yangi: bir chek = bir nonce. Qayta urinishda
-     * chaqiruvchi AYNAN shu nonce'ni qayta yuborishi kerak, shuning
-     * uchun u tashqaridan beriladi.
+     * Bir chek = bir nonce. Javob kelmasa nonce telefonda saqlanadi
+     * (ChekNavbat) va qayta urinishda AYNAN o'sha nonce yuboriladi —
+     * shuning uchun u tashqaridan beriladi.
      */
     fun chek(tur: String, soni: Int, nonce: String): ChekNatija {
         val j = JSONObject(
