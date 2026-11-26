@@ -42,13 +42,6 @@ class MainActivity : AppCompatActivity() {
     private var tanlangan = 0
     private var soni = 1
 
-    // Turlar holati. Ilgari "turlar bo'sh -> yukla -> chiz -> turlar bo'sh
-    // -> yukla..." aylanasi bor edi: kompyuterda birorta tur kiritilmagan
-    // bo'lsa telefon to'xtovsiz so'rov yuborardi. Endi avtomatik yuklash
-    // faqat BIR MARTA, keyingisi — "yangilash" tugmasi bilan.
-    private enum class TurHolat { YUKLANMAGAN, YUKLANMOQDA, TAYYOR, XATO }
-    private var turHolat = TurHolat.YUKLANMAGAN
-
     // ── Ranglar (kompyuterdagi dastur bilan bir uslubda) ──
     private val FON = Color.parseColor("#070b09")
     private val KARTA = Color.parseColor("#0e1512")
@@ -61,16 +54,6 @@ class MainActivity : AppCompatActivity() {
     override fun onCreate(b: Bundle?) {
         super.onCreate(b)
         Server.yukla(this)
-        // Kompyuter telefonni uzsa (401): tokenni xotiradan ham o'chiramiz
-        // (aks holda ilova qayta ochilganda eski token bilan urinaverardi)
-        // va ekranni "ulanish" holatiga qaytaramiz.
-        Server.uzilganda = {
-            ui.post {
-                Server.saqla(this)
-                xabar("Kompyuterdan uzildingiz — yangi 5 xonali kod bilan ulaning")
-                chiz()
-            }
-        }
         ildiz = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             setBackgroundColor(FON)
@@ -128,7 +111,6 @@ class MainActivity : AppCompatActivity() {
         ildiz.addView(bosh())
         if (Server.token.isEmpty()) ildiz.addView(ulanishEkrani())
         else {
-            navbatKartasi()?.let { ildiz.addView(it) }
             ildiz.addView(printerKartasi())
             ildiz.addView(kassaKartasi())
             ildiz.addView(pastki())
@@ -186,7 +168,7 @@ class MainActivity : AppCompatActivity() {
 
         addView(tugma("🔍 Tarmoqdan dasturni topish").apply {
             setOnClickListener {
-                val oz = Server.ozIp(this@MainActivity)
+                val oz = Server.ozIp()
                 if (oz == null) { xabar("WiFi ulanmagan"); return@setOnClickListener }
                 text = "qidirilmoqda… ($oz)"
                 isEnabled = false
@@ -233,8 +215,7 @@ class MainActivity : AppCompatActivity() {
                         if (n == "ok") {
                             Server.saqla(this@MainActivity)
                             xabar("Ulandi")
-                            turHolat = TurHolat.YUKLANMAGAN
-                            chiz()
+                            turlarniYukla()
                         } else xabar(n)
                     }
                 }
@@ -339,15 +320,10 @@ class MainActivity : AppCompatActivity() {
         })
         if (turlar.isEmpty()) {
             addView(TextView(this@MainActivity).apply {
-                text = when (turHolat) {
-                    TurHolat.TAYYOR -> "Kompyuterda hayvon turi kiritilmagan. " +
-                        "Kassa sozlamalarida tur qo'shing va «yangilash» ni bosing."
-                    TurHolat.XATO -> "turlar olinmadi — «yangilash» ni bosing"
-                    else -> "turlar yuklanmoqda…"
-                }
+                text = "turlar yuklanmadi"
                 setTextColor(MATN2)
             })
-            if (turHolat == TurHolat.YUKLANMAGAN) turlarniYukla()
+            turlarniYukla()
         } else {
             // IKKI USTUNLI to'r: turlar ko'p bo'lganda (7+) bitta ustunda
             // ekran juda uzayib, "CHEK CHIQARISH" tugmasi pastga tushib
@@ -410,9 +386,7 @@ class MainActivity : AppCompatActivity() {
         addView(jamiMatn)
         yangilaJami()
 
-        val kut = ChekNavbat.kutilayotgan(this@MainActivity)
-        addView(tugma(if (kut != null) "JAVOBSIZ CHEKNI QAYTA YUBORISH"
-                      else "CHEK CHIQARISH", asosiy = true).apply {
+        addView(tugma("CHEK CHIQARISH", asosiy = true).apply {
             setOnClickListener { chekChiqar(this) }
         })
     }
@@ -453,76 +427,8 @@ class MainActivity : AppCompatActivity() {
             else "JAMI:  ${pul(t.narx * soni)} so'm"
     }
 
-    /**
-     * Yarim yo'lda qolgan chek haqida ogohlantirish kartasi (ekran tepasida).
-     * Bunday chek bo'lsa, kassir YANGI chek chiqarishdan oldin uni yakunlaydi.
-     */
-    private fun navbatKartasi(): View? {
-        val chopsiz = ChekNavbat.chopsiz(this)
-        val kut = ChekNavbat.kutilayotgan(this)
-        if (chopsiz == null && kut == null) return null
-        return karta().apply {
-            (background as GradientDrawable).setStroke(dp(2), QIZIL)
-            if (chopsiz != null) {
-                addView(sarlavha("CHEK CHOP ETILMADI"))
-                addView(TextView(this@MainActivity).apply {
-                    text = "Chek #${chopsiz.id} (${chopsiz.tur}, ${chopsiz.soni} bosh) " +
-                        "bazaga yozildi, lekin printerdan chiqmadi.\n" +
-                        "Yangi chek chiqarmang — shu chekni qayta chop eting."
-                    setTextColor(MATN1); textSize = 14f
-                    setPadding(0, 0, 0, dp(8))
-                })
-                addView(tugma("QAYTA CHOP ETISH", asosiy = true).apply {
-                    setOnClickListener { qaytaChop(this) }
-                })
-                addView(tugma("Chop etmasdan yopish").apply {
-                    setTextColor(MATN2)
-                    setOnClickListener {
-                        AlertDialog.Builder(this@MainActivity)
-                            .setTitle("Chop etmasdan yopish")
-                            .setMessage("Chek #${chopsiz.id} bazada qoladi, lekin " +
-                                "xaridorga qog'oz chek berilmaydi. Davom etasizmi?")
-                            .setPositiveButton("Ha, yopish") { _, _ ->
-                                ChekNavbat.chopsizTozala(this@MainActivity); chiz()
-                            }
-                            .setNegativeButton("Yo'q", null).show()
-                    }
-                })
-            } else if (kut != null) {
-                addView(sarlavha("CHEK JAVOBI KELMADI"))
-                addView(TextView(this@MainActivity).apply {
-                    text = "${kut.tur}, ${kut.soni} bosh — chek kompyuterga yuborildi, " +
-                        "lekin javob kelmadi.\nPastdagi tugma bilan AYNAN shu chekni " +
-                        "qayta yuboring: kompyuterda yozilgan bo'lsa, ikkinchi chek chiqmaydi."
-                    setTextColor(MATN1); textSize = 14f
-                    setPadding(0, 0, 0, dp(8))
-                })
-                addView(tugma("Bu chekni bekor qilish").apply {
-                    setTextColor(MATN2)
-                    setOnClickListener {
-                        AlertDialog.Builder(this@MainActivity)
-                            .setTitle("Chekni bekor qilish")
-                            .setMessage("Chek kompyuterga yetib borgan bo'lsa, u bazada " +
-                                "qoladi. Avval kompyuterdagi kassada tekshiring. " +
-                                "Bekor qilasizmi?")
-                            .setPositiveButton("Bekor qilish") { _, _ ->
-                                ChekNavbat.kutTozala(this@MainActivity); chiz()
-                            }
-                            .setNegativeButton("Yo'q", null).show()
-                    }
-                })
-            }
-        }
-    }
-
     private fun chekChiqar(btn: Button) {
-        if (ChekNavbat.chopsiz(this) != null) {
-            xabar("Avval chop etilmagan chekni qayta chop eting"); return
-        }
-        // Javobi kelmagan chek bo'lsa — YANGI chek emas, o'sha qayta ketadi
-        val oldingi = ChekNavbat.kutilayotgan(this)
-        val t = turlar.getOrNull(tanlangan)
-        if (oldingi == null && t == null) { xabar("Tur tanlanmagan"); return }
+        val t = turlar.getOrNull(tanlangan) ?: run { xabar("Tur tanlanmagan"); return }
         if (!Printer.ulanganmi()) {
             // Oxirgi printerga o'zi qayta ulanib ko'radi
             val oxirgi = Printer.oxirgi(this)
@@ -534,77 +440,38 @@ class MainActivity : AppCompatActivity() {
             }
             return
         }
-        // Bir chek = bir nonce. U so'rovdan OLDIN telefon xotirasiga
-        // yoziladi: javob kelmasa (WiFi uzildi, ilova yopildi) keyingi
-        // urinishda AYNAN shu nonce ketadi va server ikkinchi fiskal savdo
-        // yaratmaydi. Ilgari har bosishda yangi nonce yasalardi — himoya
-        // amalda ishlamas edi.
-        val k = oldingi ?: ChekNavbat.Kutilayotgan(
-            java.util.UUID.randomUUID().toString(), t!!.nom, soni, t.narx
-        ).also { ChekNavbat.kutSaqla(this, it) }
-
         btn.isEnabled = false
         btn.text = "yuborilmoqda…"
+        val soniSnapshot = soni
+        // Bir chek = bir nonce. Tarmoq uzilib qayta yuborilsa ham server
+        // IKKINCHI fiskal savdo yaratmaydi (aks holda bozor ortiqcha
+        // soliq to'laydi).
+        val nonce = java.util.UUID.randomUUID().toString()
         ip.execute {
-            val r = try {
-                Server.chek(k.tur, k.soni, k.nonce)
+            try {
+                val r = Server.chek(t.nom, soniSnapshot, nonce)
+                if (!r.ok) { ui.post { btn.isEnabled = true; btn.text = "CHEK CHIQARISH" }
+                    xabar(r.xabar.ifEmpty { "chek yaratilmadi" }); return@execute }
+                // Server tayyor baytlarni bergan bo'lsa AYNAN o'shani
+                // yuboramiz — kompyuterdagi chek bilan bir xil bo'ladi.
+                val baytlar = if (r.escpos.isNotEmpty())
+                    Base64.decode(r.escpos, Base64.DEFAULT)
+                else Chek.qur(
+                    chekM ?: Server.ChekMalumot("", "", "", ""),
+                    t.nom, soniSnapshot, t.narx, r.id, r.qr
+                )
+                val n = Printer.chop(baytlar)
+                ui.post {
+                    btn.isEnabled = true; btn.text = "CHEK CHIQARISH"
+                    if (n == "ok") {
+                        soni = 1; yangilaJami(); bugunYangila()
+                        xabar("Chek #${r.id} chiqdi" +
+                            (if (r.fiskal) " · fiskal OK" else " · fiskal YO'Q"))
+                    } else xabar("Chek bazaga yozildi, lekin $n")
+                }
             } catch (e: Exception) {
-                ui.post { chiz() }
-                xabar("Chek javobi kelmadi: ${e.message}. Qayta yuboring — " +
-                    "ikkinchi chek chiqmaydi.")
-                return@execute
-            }
-            if (!r.ok) {
-                // Server aniq javob berdi: chek yaratilmadi — nonce kerak emas
-                ChekNavbat.kutTozala(this)
-                ui.post { chiz() }
-                xabar(r.xabar.ifEmpty { "chek yaratilmadi" })
-                return@execute
-            }
-            // Server tayyor baytlarni bergan bo'lsa AYNAN o'shani
-            // yuboramiz — kompyuterdagi chek bilan bir xil bo'ladi.
-            val baytlar = try {
-                if (r.escpos.isNotEmpty()) Base64.decode(r.escpos, Base64.DEFAULT)
-                else null
-            } catch (_: Exception) { null } ?: Chek.qur(
-                chekM ?: Server.ChekMalumot("", "", "", ""),
-                k.tur, k.soni, k.narx, r.id, r.qr
-            )
-            // Tartib muhim: avval "chop etilmagan" deb yozamiz, keyin
-            // nonce'ni o'chiramiz, keyin chop etamiz. Qaysi qadamda uzilsa
-            // ham chek yo'qolmaydi va ikki marta yaratilmaydi.
-            ChekNavbat.chopsizSaqla(this, ChekNavbat.Chopsiz(r.id, baytlar, k.tur, k.soni))
-            ChekNavbat.kutTozala(this)
-            val n = Printer.chop(baytlar)
-            if (n == "ok") ChekNavbat.chopsizTozala(this)
-            ui.post {
-                if (n == "ok") {
-                    soni = 1
-                    xabar("Chek #${r.id} chiqdi" +
-                        (if (r.fiskal) " · fiskal OK" else " · fiskal YO'Q"))
-                } else xabar("Chek bazaga yozildi, lekin $n — qayta chop eting")
-                chiz()
-            }
-        }
-    }
-
-    /** Bazaga yozilgan, lekin chiqmagan chekni AYNAN o'sha baytlar bilan chop etish. */
-    private fun qaytaChop(btn: Button) {
-        val ch = ChekNavbat.chopsiz(this) ?: run { chiz(); return }
-        btn.isEnabled = false
-        btn.text = "chop etilmoqda…"
-        ip.execute {
-            var n = if (Printer.ulanganmi()) Printer.chop(ch.baytlar) else "printer ulanmagan"
-            if (n != "ok") {
-                // Printer o'chib-yongan bo'lishi mumkin — bir marta qayta ulanamiz
-                val oxirgi = Printer.oxirgi(this)
-                if (oxirgi != null && Printer.ulan(oxirgi.mac) == "ok")
-                    n = Printer.chop(ch.baytlar)
-            }
-            if (n == "ok") ChekNavbat.chopsizTozala(this)
-            ui.post {
-                xabar(if (n == "ok") "Chek #${ch.id} chiqdi" else n)
-                chiz()
+                ui.post { btn.isEnabled = true; btn.text = "CHEK CHIQARISH" }
+                xabar("xato: ${e.message}")
             }
         }
     }
@@ -647,18 +514,15 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun turlarniYukla() {
-        turHolat = TurHolat.YUKLANMOQDA
         ip.execute {
             try {
                 val t = Server.turlar()
                 ui.post {
                     turlar = t.turlar; chekM = t.chek
-                    turHolat = TurHolat.TAYYOR
                     if (tanlangan >= turlar.size) tanlangan = 0
                     chiz()
                 }
             } catch (e: Exception) {
-                ui.post { turHolat = TurHolat.XATO; chiz() }
                 xabar("turlar olinmadi: ${e.message}")
             }
         }
@@ -689,7 +553,6 @@ class MainActivity : AppCompatActivity() {
     }
 
     override fun onDestroy() {
-        Server.uzilganda = null
         Printer.uz()
         ip.shutdownNow()
         super.onDestroy()
