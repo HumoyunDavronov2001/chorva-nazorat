@@ -3,10 +3,10 @@
 // Nazoratchi (Soliq/Prokuratura) bu bo'limni KO'RADI, lekin o'zgartira
 // olmaydi — tugmalar unga umuman chiqmaydi.
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { api } from '../api.js';
 import { hajm, sana, sanaVaqt } from '../format.js';
-import { useSorov, Skelet, XatoPanel, Kart, Jadval, Teg, Tugma, Bosh, Amallar }
+import { useSorov, Skelet, XatoPanel, Kart, Jadval, Teg, Tugma, Bosh, Amallar, NusxaTugma }
   from '../komp/asos.jsx';
 import { BelgiPaket } from '../komp/Belgi.jsx';
 
@@ -18,7 +18,9 @@ export default function Sozlamalar({ rol, xatoUshla, sozlama }) {
   const [tahrir, setTahrir] = useState(null);      // tahrirlanayotgan bozor
   const [yangi, setYangi] = useState({ nom: '', hudud: '', stir: '' });
 
-  if (holat.xato) xatoUshla?.(holat.xato);
+  // Sessiya tugaganini (401) App'ga EFFEKTDA aytamiz — render paytida
+  // boshqa komponent holatini o'zgartirish React xatosi.
+  useEffect(() => { if (holat.xato) xatoUshla?.(holat.xato); }, [holat.xato, xatoUshla]);
 
   const amal = async (fn) => {
     setXato('');
@@ -119,8 +121,14 @@ export default function Sozlamalar({ rol, xatoUshla, sozlama }) {
                               bosildi: () => setTahrir({ id: b.id, nom: b.nom,
                                                          hudud: b.hudud, stir: b.stir }) },
                             { nom: b.faol ? 'Toʻxtatish' : 'Yoqish',
-                              bosildi: () => amal(() => api.yubor('/api/bozor_holat',
-                                                    { id: b.id, faol: !b.faol })) },
+                              bosildi: () => {
+                                // To'xtatish — ishlab turgan bozorga ta'sir qiladi:
+                                // menyuda bitta noto'g'ri bosish bilan bo'lmasin
+                                if (b.faol && !confirm(`"${b.nom}" bozori TOʻXTATILADI.\n\n`
+                                                       + 'Davom etilsinmi?')) return;
+                                amal(() => api.yubor('/api/bozor_holat',
+                                                     { id: b.id, faol: !b.faol }));
+                              } },
                             { nom: b.super_ruxsat ? 'Super-adminni bloklash'
                                                   : 'Super-adminni ochish',
                               bosildi: () => {
@@ -207,7 +215,9 @@ function BozorOrnatish({ kalit, apiUrl, yop }) {
     a.href = URL.createObjectURL(b);
     a.download = `markaz_bolagi_bozor${kalit.id || ''}.json`;
     a.click();
-    URL.revokeObjectURL(a.href);
+    // Darhol bekor qilinsa ba'zi brauzerlarda (Firefox, Safari) yuklab
+    // olish boshlanmay qoladi — CSV eksportidagidek kechiktiramiz
+    setTimeout(() => URL.revokeObjectURL(a.href), 5000);
   };
 
   return (
@@ -246,12 +256,8 @@ function BozorOrnatish({ kalit, apiUrl, yop }) {
           <pre className="text-xs p-3 rounded-lg overflow-x-auto mt-2"
                style={{ background: 'var(--fon)' }}>{bolak}</pre>
           <div className="flex gap-2 mt-2 flex-wrap">
-            <Tugma onClick={() => navigator.clipboard.writeText(kalit.kalit)}>
-              Faqat kalitni nusxalash
-            </Tugma>
-            <Tugma onClick={() => navigator.clipboard.writeText(bolak)}>
-              Boʻlakni nusxalash
-            </Tugma>
+            <NusxaTugma matn={kalit.kalit}>Faqat kalitni nusxalash</NusxaTugma>
+            <NusxaTugma matn={bolak}>Boʻlakni nusxalash</NusxaTugma>
             <Tugma onClick={bolakYukla}>⬇ Fayl qilib yuklab olish</Tugma>
           </div>
         </li>
@@ -267,7 +273,8 @@ function BozorOrnatish({ kalit, apiUrl, yop }) {
       </ol>
       <div className="text-xs mt-3" style={{ color: 'var(--matn-3)' }}>
         Kalit bazada saqlanadi — bu kartani yopsangiz ham yoʻqolmaydi,
-        reyestrdagi «Kalit» tugmasi bilan yangisini chiqarish mumkin.
+        reyestrdagi «⋯» menyusidan «Ulanish kalitini almashtirish» bilan
+        yangisini chiqarish mumkin.
       </div>
       <div className="mt-3">
         <Tugma turi="asosiy" onClick={yop}>Yopdim</Tugma>
@@ -513,33 +520,45 @@ function Foydalanuvchilar() {
       </div>
       {xato && <div className="text-sm mb-3" style={{ color: '#ef4444' }}>{xato}</div>}
 
-      {q.yuklanmoqda ? <Skelet qator={3} /> : (
+      {/* Ro'yxat olinmasa — "Foydalanuvchi yo'q" emas, XATO ko'rinsin */}
+      {q.yuklanmoqda ? <Skelet qator={3} />
+        : q.xato ? <XatoPanel xato={q.xato} qayta={q.yangila} /> : (
         <Jadval
           kalit={(f) => f.id}
           ustunlar={[
             { nom: 'Login', chiz: (f) => <span className="font-medium">{f.login}</span> },
             { nom: 'Ism', chiz: (f) => f.nom || '—' },
             { nom: 'Rol', chiz: (f) => (
-                <Teg holat={f.rol === 'admin' ? 'kok' : undefined}>
+                // 'kok' / 'yashil' / 'qizil' degan holat yo'q edi — hammasi
+                // bir xil kulrang chiqardi, "bloklangan" ham ajralmasdi
+                <Teg rang={f.rol === 'admin' ? 'var(--color-asos-600)' : undefined}>
                   {f.rol === 'admin' ? 'Administrator' : 'Nazoratchi'}
                 </Teg>) },
             { nom: 'Holat', chiz: (f) => (
-                <Teg holat={f.faol ? 'yashil' : 'qizil'}>
+                <Teg holat={f.faol ? 'yaxshi' : 'xavf'}>
                   {f.faol ? 'faol' : 'bloklangan'}
                 </Teg>) },
             { nom: 'Oxirgi kirish', chiz: (f) => f.oxirgi_kirish
-                ? new Date(f.oxirgi_kirish * 1000).toLocaleString('uz')
+                // toLocaleString('uz') "2026 M08 15" kabi chiqaradi (format.js boshi)
+                ? sanaVaqt(f.oxirgi_kirish * 1000)
                 : '—' },
             { nom: '', chiz: (f) => (
                 <div className="flex gap-2 justify-end">
-                  <Tugma kichik onClick={() => amal(async () => {
+                  <Tugma kichik onClick={() => {
+                    if (!confirm(`"${f.login}" ning paroli tiklanadi — eski parol `
+                                 + 'darhol ishlamay qoladi.\n\nDavom etilsinmi?')) return;
+                    amal(async () => {
                     const j = await api.yubor('/api/parol_tiklash', { id: f.id });
                     setChiqqan({ login: j.login, parol: j.parol, yangi: false });
                     return j;
-                  })}>Parolni tiklash</Tugma>
-                  <Tugma kichik onClick={() => amal(() =>
-                    api.yubor('/api/foydalanuvchi_holat',
-                              { id: f.id, faol: !f.faol }))}>
+                    });
+                  }}>Parolni tiklash</Tugma>
+                  <Tugma kichik onClick={() => {
+                    if (f.faol && !confirm(`"${f.login}" bloklanadi — u tizimga `
+                                           + 'kira olmaydi.\n\nDavom etilsinmi?')) return;
+                    amal(() => api.yubor('/api/foydalanuvchi_holat',
+                                         { id: f.id, faol: !f.faol }));
+                  }}>
                     {f.faol ? 'Bloklash' : 'Ochish'}
                   </Tugma>
                 </div>) },

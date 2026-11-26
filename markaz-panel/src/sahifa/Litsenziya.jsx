@@ -9,10 +9,10 @@
 // To'lovdan keyin YANGI kalit chiqariladi (u katta seriya oladi va
 // bekor yozuvidan ustun turadi).
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { api } from '../api.js';
 import { sana, sanaStr, sanadanDate } from '../format.js';
-import { useSorov, Skelet, XatoPanel, Kart, Jadval, Teg, Tugma, Bosh }
+import { useSorov, Skelet, XatoPanel, Kart, Jadval, Teg, Tugma, Bosh, NusxaTugma }
   from '../komp/asos.jsx';
 import { BelgiQulf } from '../komp/Belgi.jsx';
 
@@ -41,18 +41,33 @@ export default function Litsenziya({ rol, xatoUshla }) {
   const [xato, setXato] = useState('');
   const [ish, setIsh] = useState(false);
 
-  if (lits.xato) xatoUshla?.(lits.xato);
+  // Sessiya tugaganini (401) App'ga EFFEKTDA aytamiz — render paytida
+  // boshqa komponent holatini o'zgartirish React xatosi.
+  useEffect(() => { if (lits.xato) xatoUshla?.(lits.xato); }, [lits.xato, xatoUshla]);
   if (rol !== 'admin')
     return <Bosh belgi={BelgiQulf}>Litsenziya boʻlimi faqat administrator uchun.</Bosh>;
 
+  // Qurilma raqami dastur ekranida 8 belgidan chiziqcha bilan ko'rinadi
+  // (jadvalda ham shunday chiziladi), bazada esa chiziqchasiz turadi.
+  // Ko'chirilganda chiziqcha va bo'shliqlar ham kelib qolardi: uzunlik
+  // tekshiruvi ularni ham sanardi va kalit buzuq raqamga chiqardi.
+  const qurilma = shakl.qurilma.replace(/[\s-]/g, '');
+  const bozorNom = (bozorlar.malumot?.bozorlar || [])
+    .find((b) => String(b.id) === String(shakl.bozor_id))?.nom || '';
+
   const chiqar = async (qayta = false) => {
+    // QAYTA CHIQARISH ESKI KALITNI BEKOR QILADI — bir bosishda ishlab
+    // turgan bozor to'xtab qolmasin.
+    if (qayta && !confirm(`"${bozorNom}" bozoridagi ${qurilma.slice(0, 8)}… kompyuterining `
+        + 'ESKI kaliti BEKOR qilinadi va yangisi chiqariladi. Yangi kalit dasturga '
+        + 'kiritilmaguncha bozor dasturi toʻxtaydi.\n\nDavom etamizmi?')) return;
     setIsh(true); setXato(''); setNatija(null);
     try {
       const j = await api.yubor('/api/kalit_chiqar', {
         bozor_id: Number(shakl.bozor_id) || 0,
-        qurilma: shakl.qurilma,
-        muddat_kun: Number(shakl.muddat_kun) || 0,
-        kamera_limit: Number(shakl.kamera_limit) || 0,
+        qurilma,
+        muddat_kun: Math.max(0, Math.floor(Number(shakl.muddat_kun) || 0)),
+        kamera_limit: Math.max(0, Math.floor(Number(shakl.kamera_limit) || 0)),
         izoh: shakl.izoh,
         qayta,
       });
@@ -147,11 +162,11 @@ export default function Litsenziya({ rol, xatoUshla }) {
         </div>
         <div className="flex flex-wrap gap-2 mt-3">
           <Tugma turi="asosiy" onClick={() => chiqar(false)}
-                 disabled={ish || !shakl.bozor_id || shakl.qurilma.length < 32}>
+                 disabled={ish || !shakl.bozor_id || qurilma.length < 32}>
             {ish ? 'Chiqarilmoqda…' : 'Kalit chiqarish'}
           </Tugma>
           <Tugma onClick={() => chiqar(true)}
-                 disabled={ish || !shakl.bozor_id || shakl.qurilma.length < 32}>
+                 disabled={ish || !shakl.bozor_id || qurilma.length < 32}>
             Qayta chiqarish (eskisini bekor qilib)
           </Tugma>
         </div>
@@ -166,10 +181,7 @@ export default function Litsenziya({ rol, xatoUshla }) {
             </div>
             <div className="font-mono text-xs break-all p-2 rounded"
                  style={{ background: 'var(--fon)' }}>{natija.kalit}</div>
-            <Tugma className="mt-2"
-                   onClick={() => navigator.clipboard.writeText(natija.kalit)}>
-              Nusxalash
-            </Tugma>
+            <NusxaTugma className="mt-2" matn={natija.kalit}>Nusxalash</NusxaTugma>
             <div className="text-xs mt-2" style={{ color: 'var(--matn-3)' }}>
               Kalitni bozor kompyuteridagi aktivatsiya oynasiga kiriting.
             </div>

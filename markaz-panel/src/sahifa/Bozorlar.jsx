@@ -8,6 +8,7 @@
 // PUL faqat chekdan olinadi. Markaz "kutilgan summa" degan taxminiy
 // raqamni CHIQARMAYDI — chek berilmagan bo'lsa shunday deb yoziladi.
 
+import { useEffect } from 'react';
 import { api } from '../api.js';
 import { soz, pul, aloqaMatn, sana, vaqt } from '../format.js';
 import { useSorov, Skelet, XatoPanel, Kart, Kpi, Jadval, Teg, Tugma, Bosh }
@@ -24,7 +25,9 @@ export default function Bozorlar({ xatoUshla, sozlama }) {
   const { yuklanmoqda, xato, malumot, yangila, oxirgiYangilangan } =
     useSorov(() => api.ol('/api/holat'), [], { interval: 15000 });
 
-  if (xato) xatoUshla?.(xato);
+  // Sessiya tugaganini (401) App'ga EFFEKTDA aytamiz — render paytida
+  // boshqa komponent holatini o'zgartirish React xatosi.
+  useEffect(() => { if (xato) xatoUshla?.(xato); }, [xato, xatoUshla]);
   if (yuklanmoqda && !malumot) {
     return (
       <div className="flex flex-col gap-5">

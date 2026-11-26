@@ -35,7 +35,9 @@ export default function Bozor({ arg: id, rol, xatoUshla }) {
   const { yuklanmoqda, xato, malumot, yangila } =
     useSorov(() => api.ol(`/api/bozor?id=${id}&dan=${kunOldin(13)}&gacha=${sanaStr()}`), [id]);
 
-  if (xato) xatoUshla?.(xato);
+  // Sessiya tugaganini (401) App'ga EFFEKTDA aytamiz — render paytida
+  // boshqa komponent holatini o'zgartirish React xatosi.
+  useEffect(() => { if (xato) xatoUshla?.(xato); }, [xato, xatoUshla]);
   if (yuklanmoqda) {
     return (
       <div className="flex flex-col gap-4">
@@ -73,10 +75,11 @@ export default function Bozor({ arg: id, rol, xatoUshla }) {
       </div>
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-        <Kpi nom="14 kun · chiqdi" belgi={BelgiChiqdi} qiymat={soz(b.jami.chiqdi)}
+        {/* Xom son + format — bosh sahifadagidek raqam sanab chiqadi */}
+        <Kpi nom="14 kun · chiqdi" belgi={BelgiChiqdi} qiymat={b.jami.chiqdi} format={soz}
              izoh={`kirdi ${soz(b.jami.kirdi)}`} />
-        <Kpi nom="Cheklar" belgi={BelgiChek} qiymat={soz(b.jami.chek_soni)} />
-        <Kpi nom="Chek boshi" belgi={BelgiBosh} qiymat={soz(b.jami.chek_bosh)}
+        <Kpi nom="Cheklar" belgi={BelgiChek} qiymat={b.jami.chek_soni} format={soz} />
+        <Kpi nom="Chek boshi" belgi={BelgiBosh} qiymat={b.jami.chek_bosh} format={soz}
              izoh="chekdagi jonli hayvon" />
         <Kpi nom="Tushum" belgi={BelgiPul}
              /* ANIQ SON HAM EKRANDA BO'LSIN. Ilgari kartada "96,8 mln",
@@ -136,9 +139,16 @@ function JonliKamera({ id }) {
         if (!toxta) setSuratXato(e.message);
       }
     };
+    // Har so'rov bozordan yangi surat so'raydi (bozorning sekin interneti
+    // orqali). Tab yashirin bo'lsa — so'ramaymiz; qaytganda darhol olamiz.
     ol();
-    const t = setInterval(ol, 2000);
-    return () => { toxta = true; clearInterval(t); };
+    const t = setInterval(() => { if (!document.hidden) ol(); }, 2000);
+    const korinish = () => { if (!document.hidden) ol(); };
+    document.addEventListener('visibilitychange', korinish);
+    return () => {
+      toxta = true; clearInterval(t);
+      document.removeEventListener('visibilitychange', korinish);
+    };
   }, [id, kam]);
 
   const kameralar = texnik.malumot?.holat?.kameralar || [];
@@ -224,7 +234,8 @@ function DasturHolati({ id }) {
         <Kpi nom="Disk" qiymat={t.disk?.bosh_gb != null ? `${t.disk.bosh_gb} GB` : '—'}
              izoh="boʻsh joy" />
         <Kpi nom="Ishlash vaqti"
-             qiymat={up > 3600 ? `${Math.floor(up / 3600)} s ${Math.floor((up % 3600) / 60)} d`
+             /* "3 s 20 d" edi — panelda "s" boshqa joyda SONIYA ma'nosida */
+             qiymat={up > 3600 ? `${Math.floor(up / 3600)} soat ${Math.floor((up % 3600) / 60)} daqiqa`
                                : `${Math.floor(up / 60)} daqiqa`}
              izoh={`holat yoshi ${malumot.yosh_s} s`} />
       </div>
@@ -255,7 +266,7 @@ function Cheklar({ id }) {
   return (
     <Kart sarlavha="Cheklar"
           ong={<input type="date" value={sanaQiymat} max={sanaStr()} aria-label="Sana"
-                      onChange={(e) => setSana(e.target.value)}
+                      onChange={(e) => e.target.value && setSana(e.target.value)}
                       className="px-2 py-1 rounded-lg border text-sm"
                       style={{ borderColor: 'var(--chegara)', background: 'var(--panel-2)',
                                color: 'var(--matn)' }} />}>
@@ -415,28 +426,47 @@ function Yozuvlar({ id }) {
 // qo'lda kiritadi, lekin ular kamera sanaganidan AJRATIB saqlanadi —
 // davlat hisobotida "qurilma o'lchadi" bilan "odam aytdi" bir xil
 // ko'rinmasligi kerak.
+const boshQatorlar = () => [
+  { tur: 'Qoʻy', kirdi: '', chiqdi: '' },
+  { tur: 'Qora mol', kirdi: '', chiqdi: '' },
+];
+// Hayvon soni — manfiy yoki kasr bo'lmaydi ("-5" yoki "2.5" terilsa ham)
+const butun = (v) => Math.max(0, Math.floor(Number(v) || 0));
+
 function QoldaSanoq({ id, rol, yangila }) {
   const admin = rol === 'admin';
   const [sana_, setSana] = useState(sanaStr());
-  const [qatorlar, setQatorlar] = useState([
-    { tur: 'Qoʻy', kirdi: '', chiqdi: '' },
-    { tur: 'Qora mol', kirdi: '', chiqdi: '' },
-  ]);
+  const [qatorlar, setQatorlar] = useState(boshQatorlar);
   const [xato, setXato] = useState('');
   const [xabar, setXabar] = useState('');
   const [ketmoqda, setKetmoqda] = useState(false);
+  const [yuklanmoqda, setYuklanmoqda] = useState(true);
+  const [yuklashXato, setYuklashXato] = useState('');
 
-  // Shu kunga allaqachon kiritilgan bo'lsa — maydonlarni to'ldiramiz
+  // Shu kunga allaqachon kiritilgan bo'lsa — maydonlarni to'ldiramiz.
+  // KIRITILMAGAN bo'lsa — maydonlarni TOZALAYMIZ. Ilgari tozalanmasdi:
+  // 10-sana ochilib, keyin 11-sana tanlansa, 10-sananing sonlari
+  // maydonlarda qolardi va "Saqlash" ularni 11-sanaga yozib yuborardi.
   useEffect(() => {
     let bekor = false;
+    setYuklanmoqda(true); setXabar(''); setXato(''); setYuklashXato('');
     api.ol(`/api/qolda_sanoq?id=${id}&sana=${sana_}`)
       .then((j) => {
-        if (bekor || !j.qatorlar?.length) return;
-        setQatorlar(j.qatorlar.map((q) => ({
-          tur: q.tur, kirdi: String(q.kirdi || ''), chiqdi: String(q.chiqdi || ''),
-        })));
+        if (bekor) return;
+        setQatorlar(j?.qatorlar?.length
+          ? j.qatorlar.map((q) => ({
+              tur: q.tur, kirdi: String(q.kirdi || ''), chiqdi: String(q.chiqdi || ''),
+            }))
+          : boshQatorlar());
       })
-      .catch(() => {});
+      .catch((e) => {
+        if (bekor) return;
+        // Eski yozuvni bilmasdan saqlash uni ustidan yozib yuboradi —
+        // shuning uchun xato ko'rsatiladi va saqlash yopiladi.
+        setQatorlar(boshQatorlar());
+        setYuklashXato(`Shu sanadagi yozuv olinmadi: ${e.message}`);
+      })
+      .finally(() => { if (!bekor) setYuklanmoqda(false); });
     return () => { bekor = true; };
   }, [id, sana_]);
 
@@ -450,8 +480,8 @@ function QoldaSanoq({ id, rol, yangila }) {
         id, sana: sana_,
         qatorlar: qatorlar.map((q) => ({
           tur: q.tur.trim(),
-          kirdi: Number(q.kirdi) || 0,
-          chiqdi: Number(q.chiqdi) || 0,
+          kirdi: butun(q.kirdi),
+          chiqdi: butun(q.chiqdi),
         })),
       });
       setXabar(`Saqlandi — ${soz(j.yozuvlar)} bosh yozildi`);
@@ -460,8 +490,8 @@ function QoldaSanoq({ id, rol, yangila }) {
     finally { setKetmoqda(false); }
   };
 
-  const jamiK = qatorlar.reduce((a, q) => a + (Number(q.kirdi) || 0), 0);
-  const jamiC = qatorlar.reduce((a, q) => a + (Number(q.chiqdi) || 0), 0);
+  const jamiK = qatorlar.reduce((a, q) => a + butun(q.kirdi), 0);
+  const jamiC = qatorlar.reduce((a, q) => a + butun(q.chiqdi), 0);
 
   const maydon = {
     background: 'var(--panel-2)', borderColor: 'var(--chegara)', color: 'var(--matn)',
@@ -475,6 +505,8 @@ function QoldaSanoq({ id, rol, yangila }) {
       ) : (
         <>
           {xato && <XatoPanel xato={{ message: xato }} />}
+          {yuklashXato && <XatoPanel xato={{ message: yuklashXato }}
+                                     izoh="Saqlash yopildi: eski yozuvni bilmasdan uning ustidan yozib yuborish mumkin edi. Sanani qayta tanlang yoki sahifani yangilang." />}
           {xabar && (
             <div className="mb-3 px-3 py-2 rounded-lg text-sm"
                  style={{ background: 'var(--yaxshi-fon)', color: 'var(--yaxshi)' }}>
@@ -485,7 +517,7 @@ function QoldaSanoq({ id, rol, yangila }) {
           <label className="text-sm block mb-3">
             Sana
             <input type="date" value={sana_} max={sanaStr()}
-                   onChange={(e) => setSana(e.target.value)}
+                   onChange={(e) => e.target.value && setSana(e.target.value)}
                    className="ml-2 px-3 py-1.5 rounded-lg border" style={maydon} />
           </label>
 
@@ -544,7 +576,7 @@ function QoldaSanoq({ id, rol, yangila }) {
             <Tugma onClick={() => setQatorlar((r) => [...r, { tur: '', kirdi: '', chiqdi: '' }])}>
               + Tur qoʻshish
             </Tugma>
-            <Tugma turi="asosiy" onClick={saqla} disabled={ketmoqda || (!jamiK && !jamiC)}>
+            <Tugma turi="asosiy" onClick={saqla} disabled={ketmoqda || yuklanmoqda || !!yuklashXato || (!jamiK && !jamiC)}>
               {ketmoqda ? 'Saqlanmoqda…' : 'Saqlash'}
             </Tugma>
           </div>
